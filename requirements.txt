@@ -37,3 +37,7 @@ python-dotenv==1.0.1
 
 # ── Web scraping (Playwright — PDF / quiz extraction) ─────────
 playwright==1.42.0
+
+#-----Gemini AI formatting--------
+
+google-genai
