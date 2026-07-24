@@ -84,7 +84,6 @@ filter_collection  = dbx.user_filters  # kept for compatibility
 BOT_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN_2}"
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-chatn     = "quiz_zone_new"
 PAGE_SIZE = 10
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -102,29 +101,22 @@ IV_B           = binascii.unhexlify(IV_HEX.ljust(32, "0"))[:16]
 user_quiz_data = {}
 broadcast_active = False 
 
+
 TEMP_ACCESS = {}
 
-MASTER_KEY_HEX = "2e4c5fe382452f9f636b059b4f5cfdfa"
-IV_HEX = "4048894e29ea"
-
-MASTER_KEY = binascii.unhexlify(MASTER_KEY_HEX)
-IV = binascii.unhexlify(IV_HEX.ljust(32, '0'))[:16]
 
 def encrypt_test_id(test_id: str) -> str:
-    cipher = AES.new(MASTER_KEY, AES.MODE_CBC, IV)
+    cipher = AES.new(MASTER_KEY_B, AES.MODE_CBC, IV_B)
     padded_data = pad(test_id.encode(), AES.block_size)
     encrypted = cipher.encrypt(padded_data)
     return base64.urlsafe_b64encode(encrypted).decode()
 
 def decrypt_test_id(encrypted_id: str) -> str:
-    MASTER_KEY = binascii.unhexlify(MASTER_KEY_HEX)
-    IV = binascii.unhexlify(IV_HEX.ljust(32, '0'))[:16]
-
     padding_needed = 4 - (len(encrypted_id) % 4)
     if padding_needed and padding_needed != 4:
         encrypted_id += "=" * padding_needed
 
-    cipher = AES.new(MASTER_KEY, AES.MODE_CBC, IV)
+    cipher = AES.new(MASTER_KEY_B, AES.MODE_CBC, IV_B)
     encrypted_data = base64.urlsafe_b64decode(encrypted_id)
     decrypted = unpad(cipher.decrypt(encrypted_data), AES.block_size)
     return decrypted.decode()
@@ -141,12 +133,9 @@ FEATURES_TEXT = """> **📢 Features Showcase of Quizbot!** 🚀
 🔹 **Edit Existing Quizzes** with ease like shuffle title editing timer adding removing questions and many more.  
 🔹 **Quiz Analytics:** View engagement, tracking how many users completed the quiz.  
 🔹 **Inline Query Support:** Share quizzes instantly via quiz ID.  
-🔹 **Free & Paid Quizzes:** Restrict access to selected users/groups—perfect for paid quiz series!  
 🔹 **Assignment Management:** Track student responses via bot submissions.  
 🔹 **View Creator Info** using the quiz ID.  
 🔹 **Generate Beautiful HTML Reports** with score counters, plus light/dark theme support.  
-🔹 **Manage Paid Quizzes:** Add/remove users & groups individually or in bulk.  
-🔹 **Video Tutorials:** Find detailed guides in the Help section.  
 🔹 **Auto-Send Group Results:** No need to copy-paste manually—send all results in one click! 
 🔹 **Create Sectional Quiz:** You can create different sections with different timing 🥳.
 🔹 **Slow/Fast**: Slow or fast ongoing quiz.
@@ -156,35 +145,11 @@ FEATURES_TEXT = """> **📢 Features Showcase of Quizbot!** 🚀
 🔹 Advance Mechanism with 99.99% uptime.
 🔹 Automated link and username removal from Poll's description and questions.
 🔹 Auto txt quiz creation from Wikipedia Britannia bbc news and 20+ articles sites.
-
-> **Latest update 🆕**
-
-🔹 Auto clone from official quizbot.
-🔹 Create from polls/already finishrd quizzes in channels and all try /extract.
-🔹 Create from Drishti IAS web Quiz try /quiztxt.
-
-> **🚀 Upcoming Features:** 
-
-🔸 Advance Engagement saving + later on perspective.
-🔸 More optimizations for a smoother experience.
-🔸 Suprising Updates...
-
-> **📊 Live Tracker & Analysis:** 
-
-✅ **Topper Comparisons**  
-✅ **Detailed Quiz Performance Analytics**  
 """
 
 def generate_random_id():
     return "GGN" + "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
 
-async def is_paid_user(user_id):
-    """Check if user has premium access via the API."""
-    try:
-        from func import is_premium_user
-        return await is_premium_user(user_id)
-    except Exception:
-        return False
 
 async def remove_baby(text):
     if not text:
@@ -200,25 +165,11 @@ async def remove_baby(text):
     return text.strip()
     
 
-@app.on_message(filters.command("delall") & filters.user(6693636856))  # Owner ID is 1234
+@app.on_message(filters.command("delall") & filters.user(OWNER_ID))
 async def delete_all_quizzes(client, message: Message):
     result = questions_collection.delete_many({})
     await message.reply(f"✅ Deleted {result.deleted_count} quiz records from the database.")
 
-async def subscribe(app, message):
-    if LOG_GROUP:
-        try:
-          user = await app.get_chat_member(LOG_GROUP, message.from_user.id)
-          if str(user.status) == "ChatMemberStatus.BANNED":
-              await message.reply_text("You are Banned. Contact -- Team SPY")
-              return 1
-        except UserNotParticipant:
-            caption = f"Join our channel to use the bot"
-            await message.reply_photo(photo="https://graph.org/file/d44f024a08ded19452152.jpg",caption=caption, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Join Now...", url=f"https://t.me/quiz_zone_new")]]))
-            return 1
-        except Exception:
-            await message.reply_text("Something Went Wrong. Contact us Team SPY...")
-            return 1
 
 async def send_document_http(chat_id: int, file_id: str, caption: str):
     payload = {
@@ -288,16 +239,6 @@ async def clone_quiz(_, message):
         await status.edit("❌ Failed to send quiz file via fallback.")
         
 
-@app.on_message(filters.command("convertall") & filters.chat(chatn))
-async def convert_all_paid_to_free(client, message):
-    k = await message.reply_text("Converting paid to free plz wait")
-    updated_count = questions_collection.update_many(
-        {"type": "paid"},
-        {"$set": {"type": "free"}}
-    ).modified_count
-    
-    await k.edit(f"Converted {updated_count} quizzes from Paid to Free.")
-
 @app.on_message(filters.command("del") & filters.private)
 async def delete_quiz(client, message: Message):
     args = message.text.split()
@@ -338,7 +279,7 @@ async def remove_all_authorized_users(client, message: Message):
 
     await message.reply("✅ All authorized users have been removed from your list.")
 
-@app.on_message(filters.command("transfer") & filters.user(6693636856))
+@app.on_message(filters.command("transfer") & filters.user(OWNER_ID))
 async def transfer_quizzes(client, m):
     """Transfer all quizzes from one creator to another - Owner only"""
     args = m.text.split()
@@ -389,29 +330,6 @@ async def transfer_quizzes(client, m):
         await pm.edit_text(f"❌ Transfer failed: {str(e)}")
         print(f"Transfer error: {e}")
 
-@app.on_message(filters.command("add") & filters.private)
-async def add_authorized_user(client, message: Message):
-    check = await subscribe(app, message)
-    if check:  # If user is not subscribed, return early
-        return
-        
-    args = message.text.split()
-    try:
-        if len(args) != 2:
-            raise ValueError("Invalid arguments count.")
-        
-        target_user_id = int(args[1])  # Will raise ValueError if not an integer
-    except ValueError:
-        await message.reply("❌ Please provide a valid user ID. Example: `/rem 123456789` or `/rem -123456789`")
-        return
-        
-    user_id = message.from_user.id
-    auth_chats_collection.update_one(
-        {"creator_id": user_id},
-        {"$addToSet": {"auth_users": target_user_id}},
-        upsert=True
-    )
-    await message.reply(f"✅ User {target_user_id} has been authorized.")
 
 # Cancel Command Handler
 @app.on_message(filters.command("cancel") & filters.private)
@@ -426,26 +344,6 @@ async def cancel_quiz_creation(client, message):
     else:
         await message.reply("⚠️ No ongoing question creation to cancel.")
 
-# Command: /rem user_id
-@app.on_message(filters.command("rem") & filters.private)
-async def remove_authorized_user(client, message: Message):
-    args = message.text.split()
-    try:
-        if len(args) != 2:
-            raise ValueError("Invalid arguments count.")
-        
-        target_user_id = int(args[1])  # Will raise ValueError if not an integer
-    except ValueError:
-        await message.reply("❌ Please provide a valid user ID. Example: `/rem 123456789` or `/rem -123456789`")
-        return
-
-    user_id = message.from_user.id
-    auth_chats_collection.update_one(
-        {"creator_id": user_id},
-        {"$pull": {"auth_users": target_user_id}}
-    )
-    await message.reply(f"✅ User {target_user_id} has been unauthorized.")
-    
 
 # Custom JSON encoder that handles MongoDB types
 class MongoJSONEncoder(json.JSONEncoder):
@@ -595,13 +493,7 @@ async def send_quiz_page(client, message, quizzes, page_number, user_id, search_
 
 @app.on_message(filters.command("myquizzes") & filters.private)
 async def list_user_quizzes(client, message: Message):
-
-    check = await subscribe(app, message)
-    if check:  # If user is not subscribed, return early
-        return
-        
     user_id = message.from_user.id
-    
 
     search_terms = []
     if len(message.command) > 1:
@@ -739,7 +631,6 @@ async def handle_inline_query(client, inline_query):
             return
 
         quiz_name = quiz_data["quiz_name"]
-        type = quiz_data["type"]
         question_count = len(quiz_data["questions"])
         timer = quiz_data["timer"]
         nmark = quiz_data.get("negative_marking", 0)
@@ -752,7 +643,6 @@ async def handle_inline_query(client, inline_query):
             f"**⏰ Timer:** {timer} seconds\n"
             f"**🆔 Quiz ID:** `{query}`\n"
             f"**🏴‍☠️ -ve Marking:** `{nmark}`\n"
-            f"**💰 Type:** `{type}`"
         )
         if sections:
             message_text += "\n\n> **📂 Sections:**"
@@ -823,10 +713,6 @@ user_create_limits = {}
 
 @app.on_message(filters.command("create") & filters.private)
 async def create_quiz(client, message: Message):
-    check = await subscribe(app, message)
-    if check:  # If user is not subscribed, return early
-        return
-
     user_id = message.from_user.id
     now = datetime.now()
     if user_id in ongoing_edits:
@@ -869,7 +755,6 @@ async def create_quiz(client, message: Message):
 @app.on_message(filters.command("done") & filters.private)
 async def finish_quiz_creation(client, message: Message):
     user_id = message.from_user.id
-    k = 6693636856
 
     if user_id not in user_quiz_data:
         await message.reply("❌ You haven't started creating a quiz. Use /create first.")
@@ -881,7 +766,7 @@ async def finish_quiz_creation(client, message: Message):
         await message.reply(f"❌ You need at least **20 questions** to finish the quiz.\nCurrently, you have **{total_questions}** questions.")
         return
 
-    if total_questions > 250 and user_id != k:
+    if total_questions > 250 and user_id != OWNER_ID:
         await message.reply(f"❌ You cant create more than 250 questions per quiz, (__itna koi quiz krega bhi nhi, hanthi jesa.__)\nCurrently, you have **{total_questions}** questions.")
         return
 
@@ -900,15 +785,10 @@ async def help_command(client, message):
         "/done - Finish quiz creation\n"
         "/edit - Edit questions\n"
         "/del <quizid> - Remove a quiz from the database\n\n"
-        "> 📌 **Paid Quiz Management:**\n"
-        "/add <chatid> - Authorize a chat or user for your paid quizzes\n"
-        "/rem <chatid> - Remove a user from your paid users database\n"
-        "/remall - Clear the list of all paid users\n\n"
-        "**__Get Video Tutorial 👇__** \n\n> https://youtu.be/lDFvaPf3LoM?si=bUJRI-OHxHobUH8x"
     )
     await message.reply(help_text, disable_web_page_preview=True)
 
-@app.on_message(filters.command("gcast") & filters.user(6693636856))  # Restrict broadcast to the bot owner
+@app.on_message(filters.command("gcast") & filters.user(OWNER_ID))
 async def broadcast(client, message: Message):
     global broadcast_active
     if not message.reply_to_message:
@@ -1005,7 +885,7 @@ async def broadcast(client, message: Message):
     await progress_message.edit_text(
         f"✅ Broadcast completed: {sent_count}/{total_users} users successfully sent\n❌ Failed: {failed_count} users"
     )
-@app.on_message(filters.command("stopcast") & filters.user(6693636856))  # Restrict stop command to the owner
+@app.on_message(filters.command("stopcast") & filters.user(OWNER_ID))  # Restrict stop command to the owner
 async def stop_broadcast(client, message: Message):
     global broadcast_active
     if not broadcast_active:
@@ -1016,7 +896,7 @@ async def stop_broadcast(client, message: Message):
     await message.reply("✅ Broadcast has been stopped.")
     
 
-@app.on_message(filters.command("stats") & filters.user(7770737860))
+@app.on_message(filters.command("stats") & filters.user(OWNER_ID))
 async def stats_quiz(client, message):
 
     k = await message.reply("Fetching bot statistics...")
@@ -1026,17 +906,12 @@ async def stats_quiz(client, message):
 
     quizzes = questions_collection.find()
     removed_count = 0
-    paid_quizzes = 0
     free_quizzes = 0
     for quiz in quizzes:
         question_set_id = quiz["question_set_id"]
         total_questions = len(quiz.get("questions", []))
         
-        if quiz.get("type") == "paid":
-            paid_quizzes += 1
-        elif quiz.get("type") == "free":
-            free_quizzes += 1
-            
+        free_quizzes += 1
 
         if total_questions < 10:
 
@@ -1047,9 +922,8 @@ async def stats_quiz(client, message):
         f"> 📊 **Bot Statistics:**\n\n"
         f"👥 **Total Registered Users:** `{total_users}`\n"
         f"📚 **Total Quizzes Created:** `{total_quizzes}`\n"
-        f"💰 **Paid Quizzes:** `{paid_quizzes}`\n"
-        f"🎉 **Free Quizzes:** `{free_quizzes}`\n\n"
-        f"**__Powered by Team SPY__**"
+        f"🎉 **Quizzes:** `{free_quizzes}`\n\n"
+        f"**__Powered by Zealina__**"
     )
     
 
@@ -1676,7 +1550,7 @@ async def ban_quiz(client, message):
 async def features_command(client, message):
     await message.reply_text(FEATURES_TEXT, disable_web_page_preview=True)
 
-@app.on_message(filters.command("listquiz") & filters.chat("advance_quiz_group"))  # Restrict to owner
+@app.on_message(filters.command("listquiz") & filters.chat(OWNER_ID))
 async def list_quizzes(client, message):
     quizzes = list(questions_collection.find())
 
@@ -1689,7 +1563,6 @@ async def list_quizzes(client, message):
         question_set_id = quiz.get("question_set_id")
         num_questions = len(quiz.get("questions", []))
         timer = quiz.get("timer", "Not specified")
-        quiz_type = quiz.get("type", "Unknown")
         negative_marking = quiz.get("negative_marking", 0)
         creator_id = quiz.get("creator_id", "Unknown")
         quiz_name = re.sub(r"(https?://\S+|@\S+|/[\w\d_-]+)", "", quiz_name)
@@ -1703,7 +1576,6 @@ async def list_quizzes(client, message):
             f"**#️⃣ Questions:** `{num_questions}`\n"
             f"**⏰ Timer:** `{timer} seconds`\n"
             f"**🆔 Quiz ID:** `{question_set_id}`\n"
-            f"**💰 Type:** `{quiz_type}`\n"
             f"**🏴‍☠️ -ve Marking:** `{negative_marking:.2f}`\n"
         )
 
@@ -1876,23 +1748,8 @@ async def edit_quiz(client, message):
         await message.reply("❌ Please provide a valid **Question Set ID**.\nExample: `/edit 12345`")
         return
     user_id = message.from_user.id
-    owner_id = 7770737860  # Replace with your actual owner ID
+    owner_id = OWNER_ID
     
-    if args[1] == "-promo":
-        if len(args) < 3:
-            await message.reply("❌ Please provide the promo message or link.\nExample: `/edit -promo \"Check this out! https://t.me/abc\"`")
-            return
-
-        promo_text = message.text.split("-promo", 1)[1].strip()
-
-        result = questions_collection.update_many(
-            {"creator_id": user_id},
-            {"$set": {"promo": promo_text}}
-        )
-
-        await message.reply(f"✅ Promo updated for {result.modified_count} quiz(es)!")
-        return
-
     question_set_id = args[1]
     quiz = questions_collection.find_one({"question_set_id": question_set_id})
 
@@ -1903,7 +1760,7 @@ async def edit_quiz(client, message):
         return
 
     user_id = message.from_user.id
-    owner_id = 7770737860  # Replace with your actual owner ID
+    owner_id = OWNER_ID
     
     if quiz["creator_id"] != user_id and user_id != owner_id:
         await message.reply("❌ **This is not your quiz!** You can only edit quizzes you created.")
@@ -1918,19 +1775,14 @@ async def edit_quiz(client, message):
         InlineKeyboardButton("⏳ Edit Timer", callback_data=f"edit_timer_{question_set_id}")
     ],
     [
-        InlineKeyboardButton("⚡ Edit Type", callback_data=f"edit_type_{question_set_id}"),
-        InlineKeyboardButton("🏴‍☠️ -ve Marking", callback_data=f"edit_negative_{question_set_id}")
+        InlineKeyboardButton("🏴‍☠️ -ve Marking", callback_data=f"edit_negative_{question_set_id}"),
+        InlineKeyboardButton("📖 Edit Questions", callback_data=f"edit_questions_{question_set_id}")
     ],
     [
-        InlineKeyboardButton("📖 Edit Questions", callback_data=f"edit_questions_{question_set_id}"),
         InlineKeyboardButton("🔀 Shuffle", callback_data=f"shuffle_{question_set_id}")
     ]
         
     ]
-
-    keyboard_buttons.append([
-        InlineKeyboardButton("🔗 Add/Edit Promo", callback_data=f"edit_promo_{question_set_id}")
-    ])
 
     
     
@@ -1962,10 +1814,6 @@ async def handle_callback(client, callback_query: CallbackQuery):
         await callback_query.message.edit("⏳ Send the new **Timer** (in seconds):")
         ongoing_edits[user_id]["field"] = "timer"
 
-    elif data.startswith("edit_type_"):
-        await callback_query.message.edit("⚡ Send the new **Quiz Type** (free/paid):")
-        ongoing_edits[user_id]["field"] = "type"
-
     elif data.startswith("edit_negative_"):
         await callback_query.message.edit("➖ Send the new **Negative Marking** (e.g., 0.25):")
         ongoing_edits[user_id]["field"] = "negative_marking"
@@ -1992,20 +1840,6 @@ async def handle_callback(client, callback_query: CallbackQuery):
                                            "Send the **Question Number** you want to delete:")
         ongoing_edits[user_id]["field"] = "delete_question"
 
-    elif data.startswith("edit_promo_"):
-        question_set_id = data.split("_")[-1]
-
-        ongoing_edits[user_id] = {
-            "question_set_id": question_set_id,
-            "field": "promo"
-        }
-
-        await callback_query.message.reply(
-            "🔗 Send the **promo URL** or message for this quiz.\n"
-            "Example: https://t.me/yourchannel or message\n"
-            "Or send `remove` to delete the promo link/message."
-        )
-        await callback_query.answer()
 
     elif data.startswith("shuffle_"):
         quiz = questions_collection.find_one({"question_set_id": question_set_id})
@@ -2330,7 +2164,7 @@ async def handle_rojgar_link(client: Client, message: Message, log_group_id: int
     filters.private & 
     ~filters.command([
         "start", "create", "myquizzes", "pause", "features", "gcast", "fast", "slow", "normal",
-        "stopcast", "resume", "edit", "info", "ban", "done", "add", "rem", "assignment", "submit",
+        "stopcast", "resume", "edit", "info", "ban", "done", "assignment", "submit",
         "remall", "del", "remove", "clearlist", "stats", "help", "stop", "stopedit", "cancel", "ocr", "login", "quiz", "addfilter", "listfilters", "removefilter", "quizhelp"
     ])
 )
@@ -2343,7 +2177,7 @@ async def handle_all_messages(client, message):
         question_set_id = ongoing_edits[user_id]["question_set_id"]
         field = ongoing_edits[user_id].get("field")
         
-        if field in ["quiz_name", "timer", "type", "negative_marking", "promo"]:
+        if field in ["quiz_name", "timer", "negative_marking"]:
             new_value = message.text.strip()
             
 
@@ -2355,18 +2189,6 @@ async def handle_all_messages(client, message):
 
             elif field == "quiz_name":
                 new_value = new_value
-
-            elif field == "promo":
-                new_value = message.text.strip()
-                if new_value.lower() == "remove":
-                    new_value = None
-
-            elif field == "type":
-                if new_value.lower() not in ["free", "paid"]:
-                    await message.reply("❌ Invalid type! Please enter either 'free' or 'paid'.")
-                    return
-                new_value = new_value.lower()
-                
 
             elif field == "negative_marking":
                 try:
@@ -2754,35 +2576,13 @@ async def handle_all_messages(client, message):
                 
             user_quiz_data[user_id]["negative_marking"] = negative_marking
             del user_quiz_data[user_id]["awaiting_negative_marking"]
-            user_quiz_data[user_id]["awaiting_promo"] = True
-            await message.reply("🔗 Please send the promo message or promo link (or type 'no').\n\n> **About this:** Your channel link be sent at every 15 questions when someone runs your quiz in thier groups to amplify your works...")
-            return
-        
-        if user_data.get("awaiting_promo"):
-            promo_text = message.text.strip()
-            if promo_text.lower() == "no":
-                user_quiz_data[user_id]["promo"] = None
-            else:
-                user_quiz_data[user_id]["promo"] = promo_text
-            del user_quiz_data[user_id]["awaiting_promo"]
-            user_quiz_data[user_id]["awaiting_type"] = True
-            await message.reply("📝 Please specify the quiz type (free or paid).")
-            return
-        
-        if user_data.get("awaiting_type"):
-            quiz_type = message.text.strip().lower()
-            if quiz_type not in ["free", "paid"]:
-                await message.reply("❌ Invalid type. Please send either 'free' or 'paid'.")
-                return
-                
+
             user = message.from_user.mention
             quiz_name = user_quiz_data[user_id]["quiz_name"]
             timer = user_quiz_data[user_id].get("timer", None)
-            user_quiz_data[user_id]["type"] = quiz_type
             sections = user_quiz_data[user_id].get("sections", [])
             negative_marking = user_quiz_data[user_id]["negative_marking"]
             question_set_id = generate_random_id()
-            promo = user_quiz_data[user_id].get("promo")
             
 
             questions_collection.insert_one({
@@ -2792,9 +2592,7 @@ async def handle_all_messages(client, message):
                 "questions": user_quiz_data[user_id]["questions"],
                 "sections": sections,
                 "timer": timer,
-                "type": quiz_type,
                 "negative_marking": negative_marking,
-                "promo": promo,
             })
             
 
@@ -2808,7 +2606,6 @@ async def handle_all_messages(client, message):
                 f"**#️⃣ Questions:** {len(questions_collection.find_one({'question_set_id': question_set_id})['questions'])}\n"
                 f"**⏰ Timer:** {timer} seconds\n"
                 f"**🆔 Quiz ID:** `{question_set_id}`\n"
-                f"**💰 Type:** `{quiz_type}`\n"
                 f"**🏴‍☠️ -ve Marking:** `{negative_marking:.2f}`\n"
                 f"**🧒 Creator:** `{user}`"
             )
