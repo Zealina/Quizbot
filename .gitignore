@@ -3,5 +3,6 @@ downloads/
 logs/
 quiz_cache/
 quiz_results/
-quizbot.session/
+quizbot.session
 reports/
+.env
