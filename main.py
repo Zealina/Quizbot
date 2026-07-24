@@ -42,8 +42,6 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import base64
 import binascii
-import base64
-import binascii
 import time
 from bson import ObjectId
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
@@ -51,9 +49,8 @@ from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, 
 from config import (
     API_ID, API_HASH, BOT_TOKEN, BOT_TOKEN_2,
     MONGO_URI, MONGO_URI_2, MONGO_URIX, DB_NAME,
-    OWNER_ID, LOG_GROUP, FORCE_SUB, BOT_GROUP, CHANNEL_ID,
-    MASTER_KEY, IV_KEY, FREEMIUM_LIMIT, PREMIUM_LIMIT,
-    PAY_API, YT_COOKIES, INSTA_COOKIES, UMODE, FREE_BOT
+    OWNER_ID, BOT_GROUP, CHANNEL_ID,
+    MASTER_KEY, IV_KEY
 )
 
 app = Client("quizbot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=50)
@@ -76,11 +73,6 @@ uc_2 = db2["quiz_users"]
 qc_2 = db2["questions"]
 ac_2 = db2["auth_chats"]
 
-clientX = AsyncIOMotorClient(MONGO_URIX)
-dbx = clientX.quiz_bot_db
-quizzes_collection = dbx.quizzes
-filter_collection  = dbx.user_filters  # kept for compatibility
-
 BOT_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN_2}"
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -92,7 +84,6 @@ user_quiz_data  = {}
 broadcast_active = False
 TEMP_ACCESS     = {}
 
-import binascii
 MASTER_KEY_HEX = binascii.hexlify(MASTER_KEY.encode() if isinstance(MASTER_KEY, str) else MASTER_KEY).decode()
 IV_HEX         = binascii.hexlify(IV_KEY.encode() if isinstance(IV_KEY, str) else IV_KEY).decode()
 MASTER_KEY_B   = binascii.unhexlify(MASTER_KEY_HEX)
@@ -147,6 +138,30 @@ FEATURES_TEXT = """> **📢 Features Showcase of Quizbot!** 🚀
 🔹 Auto txt quiz creation from Wikipedia Britannia bbc news and 20+ articles sites.
 """
 
+START_TEXT = """
+👋 **Welcome to the Sammy Cares Tutorial Bot!**
+
+I'm here to help you create, manage, and share quizzes with ease.
+
+**📚 Quick Start**
+• `/create` — Create a new quiz.
+• `/myquizzes` — View all your quizzes.
+• `/listquiz` — Browse available quizzes.
+• `/edit` — Edit an existing quiz.
+• `/stopedit` — Exit editing mode.
+• `/transfer` — Transfer a quiz to another user.
+• `/assignment` — Access assignment features.
+• `/del` — Delete a specific quiz.
+• `/delall` — Delete all your quizzes.
+• `/cancel` — Cancel the current operation.
+• `/features` — See everything the bot can do.
+• `/help` — Get detailed help and guidance.
+
+💡 **Tip:** Type `/` in the chat to see the available commands, or use `/help` if you're unsure where to begin.
+
+Happy quizzing! 🎉
+"""
+
 def generate_random_id():
     return "GGN" + "".join(random.choices(string.ascii_uppercase + string.digits, k=7))
 
@@ -186,59 +201,6 @@ async def send_document_http(chat_id: int, file_id: str, caption: str):
             return await resp.json()
             
 
-# ─── /clone COMMAND (PRIVATE ONLY) ──────────────────────────────────────────
-@app.on_message(filters.command("clone") & filters.private)
-async def clone_quiz(_, message):
-    command_parts = message.text.split(maxsplit=1)
-    if len(message.command) != 2:
-        await message.reply_text("❌ Usage:\n`/clone QUIZID`")
-        return
-
-    input_text = command_parts[1].strip()
-    quiz_id = input_text.split('=')[-1] if '=' in input_text else input_text
-    chat_id = message.chat.id
-
-    status = await message.reply_text("🔍 Searching quiz database...")
-
-    quiz = await quizzes_collection.find_one({"quiz_id": quiz_id})
-
-    if not quiz:
-        await status.edit("❌ Quiz not found.")
-        return
-
-    caption = (
-        f"📘 Quiz Cloned\n"
-        f"🆔 {quiz_id}\n"
-        f"📊 Questions: {quiz.get('question_count', 'N/A')}"
-    )
-
-    try:
-        await app.send_document(
-            chat_id=chat_id,
-            document=quiz["file_id"],
-            caption=caption
-        )
-        await status.delete()
-        return
-
-    except Exception as e:
-
-        await status.edit("⚠️ Primary send failed. Trying fallback...")
-
-    result = await send_document_http(
-        chat_id=chat_id,
-        file_id=quiz["file_id"],
-        caption=caption
-    )
-
-    if result.get("ok"):
-        await status.delete()
-        await message.reply("✅ Sent!! Plz @premium_quizbot check there")
-        
-    else:
-        await status.edit("❌ Failed to send quiz file via fallback.")
-        
-
 @app.on_message(filters.command("del") & filters.private)
 async def delete_quiz(client, message: Message):
     args = message.text.split()
@@ -262,22 +224,6 @@ async def delete_quiz(client, message: Message):
     questions_collection.delete_one({"question_set_id": question_set_id})
     await message.reply(f"✅ Quiz with Question Set ID `{question_set_id}` has been deleted.")
     
-@app.on_message(filters.command("remall") & filters.private)
-async def remove_all_authorized_users(client, message: Message):
-    user_id = message.from_user.id
-
-    auth_record = auth_chats_collection.find_one({"creator_id": user_id})
-
-    if not auth_record or not auth_record.get("auth_users"):
-        await message.reply("⚠️ You don't have any authorized users to remove.")
-        return
-
-    auth_chats_collection.update_one(
-        {"creator_id": user_id},
-        {"$set": {"auth_users": []}}
-    )
-
-    await message.reply("✅ All authorized users have been removed from your list.")
 
 @app.on_message(filters.command("transfer") & filters.user(OWNER_ID))
 async def transfer_quizzes(client, m):
@@ -1098,7 +1044,7 @@ async def _process_text_lengths(question_text: str, options: List[str], reply_te
     
     return question_text, options, reply_text
 
-def decrypt_quiz_file(file_path, auth_key="codedbytedance2"):
+def decrypt_quiz_file(file_path, auth_key="brandnewday2"):
     """
     Decrypts an encrypted quiz file and saves it back to the same path
     
@@ -1549,6 +1495,10 @@ async def ban_quiz(client, message):
 @app.on_message(filters.command("features"))
 async def features_command(client, message):
     await message.reply_text(FEATURES_TEXT, disable_web_page_preview=True)
+
+@app.on_message(filters.command("start"))
+async def features_command(client, message):
+        await message.reply_text(START_TEXT, disable_web_page_preview=True)
 
 @app.on_message(filters.command("listquiz") & filters.chat(OWNER_ID))
 async def list_quizzes(client, message):
