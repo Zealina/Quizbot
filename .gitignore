@@ -1,0 +1,7 @@
+__pycache__
+downloads/
+logs/
+quiz_cache/
+quiz_results/
+quizbot.session/
+reports/

@@ -548,7 +548,6 @@ async def send_quiz_page(client, message, quizzes, page_number, user_id, search_
             f"**{start + i + 1}. {quiz.get('quiz_name', 'Unnamed Quiz')}**\n"
             f"    - 🆔 Quiz ID: `{quiz.get('question_set_id', 'N/A')}`\n"
             f"    - 🗄️ Database: `{quiz.get('source_db', 'Unknown')}`\n"
-            f"    - 📄 Type: {'Paid' if quiz.get('type') == 'paid' else 'Free'}\n"
             f"    - 👥 Users: {quiz.get('total_participation', 0)}\n"
             f"    - 🗽 Start: `/start {quiz.get('question_set_id', 'N/A')}`\n"
             f"    - 🥊 Share: `@quizbot {quiz.get('question_set_id', 'N/A')}`\n"

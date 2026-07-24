@@ -961,9 +961,7 @@ async def start_private_quiz(chat_id: int, context: ContextTypes.DEFAULT_TYPE,
             "context": context,
             "modified_timer_offset": 0
         }
-        
         await session_manager.create_session(chat_id, session_data)
-        
 
         sections = quiz.get("sections", [])
         if sections:
@@ -976,7 +974,6 @@ async def start_private_quiz(chat_id: int, context: ContextTypes.DEFAULT_TYPE,
                 if skip_count < end_idx:
                     start_section = section
                     break
-            
             if start_section:
                 await start_private_section(chat_id, start_section, skip_count)
             else:
@@ -2158,15 +2155,10 @@ async def start_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Create quizzes with MCQs, sections, timers, and even convert TestBook tests to quizzes. "
                 "Add media/text, share in groups, or invite users to answer.\n\n"
             )
-            join_channel_button = InlineKeyboardMarkup([
-
-                [InlineKeyboardButton("📢 Join Our Channel", url="https://t.me/team_spy_pro")]
-            ])
             await safe_send_message(
                 context, chat_id,
                 welcome_message,
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=join_channel_button
+                parse_mode=ParseMode.MARKDOWN
             )
             return
         
