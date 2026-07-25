@@ -25,8 +25,8 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run bot.py and main.py concurrently
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        # Inject ALL Repository Variables automatically into the Python environment
+        env: ${{ vars }}
         run: |
           # 1. Start bot.py in the background
           python bot.py &
