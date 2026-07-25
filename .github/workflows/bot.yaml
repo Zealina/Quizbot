@@ -2,9 +2,10 @@ name: Run Main and Bot
 
 on:
   schedule:
-    # Runs every 5 hours to stay under the 6-hour job ceiling
-    - cron: '0 */5 * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+    # Every 5 hours 59 minutes
+    - cron: '59 */6 * * *'
+  push:
+  workflow_dispatch:
 
 jobs:
   run-both-scripts:
@@ -17,25 +18,23 @@ jobs:
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
 
       - name: Run bot.py and main.py concurrently
-        # Inject ALL Repository Variables automatically into the Python environment
         env: ${{ vars }}
         run: |
-          # 1. Start bot.py in the background
           python bot.py &
           BOT_PID=$!
           echo "bot.py started in background with PID: $BOT_PID"
 
-          # 2. Run main.py in the foreground
           python main.py
 
-          # 3. Clean up bot.py when main.py finishes or exits
           echo "main.py exited. Stopping bot.py..."
           kill $BOT_PID || true

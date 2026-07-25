@@ -252,7 +252,7 @@ async def generate_quiz(
                 "error": f"Upload failed: {exc}",
                 "model": MODEL,
                 "config": cfg.__dict__,
-                "formatted_text": "```\n\n```",
+                "formatted_text": "",
             }
 
     contents.append(build_instruction_prompt(cfg))
@@ -321,7 +321,7 @@ async def generate_quiz(
             "finish_reason": finish_reason,
             "tokens_used_this_request": total_tokens_this_call,
             "usage_today": usage_report,
-            "formatted_text": "```\n\n```",
+            "formatted_text": "",
         }
 
     if error:
@@ -354,7 +354,7 @@ async def generate_quiz(
         "finish_reason": finish_reason,
         "tokens_used_this_request": total_tokens_this_call,
         "usage_today": usage_report,
-        "formatted_text": f"```\n{data_text}\n```",
+        "formatted_text": f"{data_text}",
     }
 
 def convert_docx_to_txt(file_path):
