@@ -6,3 +6,4 @@ quiz_results/
 quizbot.session
 reports/
 .env
+*.json

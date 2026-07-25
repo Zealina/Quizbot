@@ -41,3 +41,4 @@ playwright==1.42.0
 #-----Gemini AI formatting--------
 
 google-genai
+python-docx

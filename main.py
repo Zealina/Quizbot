@@ -37,6 +37,7 @@ from pyrogram.types import (
     Message, User, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
     InlineQueryResultArticle, InputTextMessageContent
 )
+from quiz_generator import generate_quiz
 from func import clean_html
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
@@ -695,7 +696,7 @@ async def create_quiz(client, message: Message):
         return
 
     await message.reply("✅ **Send the quiz name first.**")
-    user_quiz_data[user_id] = {"questions": [], "timer": None, "quiz_name": None, "awaiting_name": True}
+    user_quiz_data[user_id] = {"questions": [], "timer": None, "quiz_name": None, "awaiting_name": True, "no_of_questions": None, "awaiting_no_of_questions": False}
     
 
 @app.on_message(filters.command("done") & filters.private)
@@ -708,12 +709,12 @@ async def finish_quiz_creation(client, message: Message):
 
     total_questions = len(user_quiz_data[user_id]["questions"])
     
-    if total_questions < 20:
-        await message.reply(f"❌ You need at least **20 questions** to finish the quiz.\nCurrently, you have **{total_questions}** questions.")
+    if total_questions < 10:
+        await message.reply(f"❌ You need at least **10 questions** to finish the quiz.\nCurrently, you have **{total_questions}** questions.")
         return
 
     if total_questions > 250 and user_id != OWNER_ID:
-        await message.reply(f"❌ You cant create more than 250 questions per quiz, (__itna koi quiz krega bhi nhi, hanthi jesa.__)\nCurrently, you have **{total_questions}** questions.")
+        await message.reply(f"❌ You cant create more than 250 questions per quiz\nCurrently, you have **{total_questions}** questions.")
         return
 
     await message.reply("Do you want section in your quiz? send yes/no")
@@ -1410,6 +1411,9 @@ async def handle_clearlist_command(client, message: Message):
     
 @app.on_message(filters.document & filters.private)
 async def handle_document_messages(client, message: Message):
+
+    import os
+
     user_id = message.from_user.id
     chat_id = message.chat.id
     
@@ -1420,9 +1424,14 @@ async def handle_document_messages(client, message: Message):
             return
         
 
-        allowed_types = ["text/plain", "application/json"]
+        allowed_types = [
+                "text/plain",
+                "application/json",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/pdf"
+            ]
         if message.document.mime_type not in allowed_types:
-            await message.reply("Only text (.txt) files are supported for quiz questions.")
+            await message.reply("Only (.txt), (.docx) and (.pdf) files are supported for quiz questions.")
             return
         
 
@@ -1432,7 +1441,19 @@ async def handle_document_messages(client, message: Message):
         print(f"Downloading file: {message.document.file_name}")
         file_path = await message.download()
         print(f"File downloaded to: {file_path}")
-        
+
+        file_name, file_extension = os.path.splitext(file_path)
+        if file_extension != ".txt":
+            print("getting reponse...")
+            response = await generate_quiz(file_path=file_path, tgm_message=status_msg, no_of_questions=user_quiz_data[user_id]["no_of_questions"])
+            print("response gotten")
+            if response["status"] != "complete":
+                status_msg = await status_msg.edit_text(f"❌ Error: {response['error']}")
+            with open(f"{file_name}.txt", "w") as fp:
+                fp.write(response["formatted_text"])
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            file_path = f"{file_name}.txt"
 
         user_data = users_collection.find_one({"chat_id": chat_id})
         remove_words = user_data.get("remove_words", []) if user_data else []
@@ -1443,7 +1464,6 @@ async def handle_document_messages(client, message: Message):
         print("File processing complete.")
         
 
-        import os
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"Deleted temporary file: {file_path}")
@@ -2397,7 +2417,19 @@ async def handle_all_messages(client, message):
                 
             user_quiz_data[user_id]["quiz_name"] = quiz_name
             user_quiz_data[user_id]["awaiting_name"] = False
-            await message.reply(f"✅ Quiz name set to: **{quiz_name}**\nNow send questions in the stated format, or try to send a quiz poll or .txt file, send /cancel to stop creating quiz.")
+            await message.reply(f"How many questions do you want?")
+            user_quiz_data[user_id]["awaiting_no_of_questions"] = True
+            return
+
+        if user_data.get("awaiting_no_of_questions"):
+            no_of_questions = message.text.strip()
+            if not no_of_questions.isdigit():
+                await message.reply(f"Set the number of expected questions to a valid number")
+                return
+
+            user_quiz_data[user_id]["no_of_questions"] = int(no_of_questions)
+            user_quiz_data[user_id]["awaiting_no_of_questions"] = False
+            await message.reply(f"""✅ Quiz name set to: **{user_quiz_data[user_id]["quiz_name"]}** and **{no_of_questions}** expected\nNow send questions in the stated format, or try to send a quiz poll or .txt file, send /cancel to stop creating quiz.""")
             return
             
         if user_data.get("awaiting_section_choice"):
