@@ -2606,8 +2606,8 @@ async def handle_all_messages(client, message):
                     )
             
 
-            start_deep_link = f"https://t.me/{client.me.username}?start={question_set_id}"
-            group_start_deep_link = f"https://t.me/{client.me.username}?startgroup={question_set_id}"
+            start_deep_link = f"https://t.me/NewSamghibili_bot?start={question_set_id}"
+            group_start_deep_link = f"https://t.me/NewSamghibili_bot?startgroup={question_set_id}"
             
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎯 Start Quiz Now", url=start_deep_link)],
