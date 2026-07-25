@@ -54,7 +54,7 @@ from config import (
     MASTER_KEY, IV_KEY
 )
 
-app = Client("quizbot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=50)
+app = Client("TutorialSCBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=50)
 
 # ── Database connections ──────────────────────────────────────────────────────
 client_db = pymongo.MongoClient(MONGO_URI)
@@ -117,7 +117,7 @@ FEATURES_TEXT = """> **📢 Features Showcase of Quizbot!** 🚀
 
 🔹 **Create questions from text** just by providing a ✅ mark to the right options.  
 🔹 **Marathon Quiz Mode:** Create unlimited questions for a never-ending challenge.  
-🔹 **Convert Polls to Quizzes:** Simply forward polls (e.g., from @quizbot), and unnecessary elements like `[1/100]` will be auto-removed!  
+🔹 **Convert Polls to Quizzes:** Simply forward polls (e.g., from @TutorialSCBot), and unnecessary elements like `[1/100]` will be auto-removed!  
 🔹 **Smart Filtering:** Remove unwanted words (e.g., usernames, links) from forwarded polls.  
 🔹 **Skip, Pause & Resume** ongoing quizzes anytime.  
 🔹 **Bulk Question Support** via ChatGPT output.  
@@ -395,7 +395,7 @@ async def send_quiz_page(client, message, quizzes, page_number, user_id, search_
             f"    - 🗄️ Database: `{quiz.get('source_db', 'Unknown')}`\n"
             f"    - 👥 Users: {quiz.get('total_participation', 0)}\n"
             f"    - 🗽 Start: `/start {quiz.get('question_set_id', 'N/A')}`\n"
-            f"    - 🥊 Share: `@quizbot {quiz.get('question_set_id', 'N/A')}`\n"
+            f"    - 🥊 Share: `@TutorialSCBot {quiz.get('question_set_id', 'N/A')}`\n"
             f"    - 🖊️ Edit: `/edit {quiz.get('question_set_id', 'N/A')}`\n\n────────────────\n"
             for i, quiz in enumerate(current_page_quizzes)
         ]
@@ -581,7 +581,7 @@ async def handle_inline_query(client, inline_query):
         question_count = len(quiz_data["questions"])
         timer = quiz_data["timer"]
         nmark = quiz_data.get("negative_marking", 0)
-        start_deep_link = f"https://t.me/{client.me.username}?start={query}"
+        start_deep_link = f"https://t.me/NewSamghibili_bot?start={query}"
         sections = quiz_data.get("sections", [])  
         
         message_text = (
@@ -1537,8 +1537,8 @@ async def list_quizzes(client, message):
         creator_id = quiz.get("creator_id", "Unknown")
         quiz_name = re.sub(r"(https?://\S+|@\S+|/[\w\d_-]+)", "", quiz_name)
 
-        start_deep_link = f"https://t.me/{client.me.username}?start={question_set_id}"
-        group_start_deep_link = f"https://t.me/{client.me.username}?startgroup={question_set_id}"
+        start_deep_link = f"https://t.me/NewSamghibili_bot?start={question_set_id}"
+        group_start_deep_link = f"https://t.me/NewSamghibili_bot?startgroup={question_set_id}"
 
         quiz_text = (
             f"📌 **Quiz {index + 1}\n\n"
