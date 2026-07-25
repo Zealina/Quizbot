@@ -54,6 +54,31 @@ from config import (
     MASTER_KEY, IV_KEY
 )
 
+import sys
+import time
+import threading
+
+START_TIME = time.time()
+TIMEOUT_SECONDS = 21000  # 5 hours and 50 minutes
+
+def start_timeout_watchdog():
+    def watchdog():
+        while True:
+            elapsed = time.time() - START_TIME
+            if elapsed > TIMEOUT_SECONDS:
+                print(f"[{__file__}] 5.5-hour time limit reached. Exiting gracefully for GitHub Actions...")
+                # sys.exit() only kills the thread, os._exit() kills the whole process immediately
+                import os
+                os._exit(0)
+            time.sleep(30) # Check every 30 seconds
+
+    thread = threading.Thread(target=watchdog, daemon=True)
+    thread.start()
+
+# Launch the timer immediately when the script runs
+start_timeout_watchdog()
+
+
 app = Client("quizbot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=50)
 
 # ── Database connections ──────────────────────────────────────────────────────
