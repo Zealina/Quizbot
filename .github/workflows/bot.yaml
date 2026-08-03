@@ -1,9 +1,10 @@
 name: Run Main and Bot
 
 on:
-#  schedule:
-    # Every 5 hours 59 minutes
-#    - cron: '59 */6 * * *'
+  schedule:
+    # Every 5:59PM WAT
+    - cron: '59 17 * * *'
+      timezone: Africa/Lagos
   push:
   workflow_dispatch:
 
