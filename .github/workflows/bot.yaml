@@ -2,7 +2,6 @@ name: Run Main and Bot
 
 on:
   schedule:
-    # Every 5:59PM WAT
     - cron: '59 17 * * *'
       timezone: Africa/Lagos
   push:
