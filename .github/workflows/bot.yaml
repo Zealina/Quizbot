@@ -2,7 +2,7 @@ name: Run Main and Bot
 
 on:
   schedule:
-    - cron: '59 17 * * *'
+    - cron: '59 16 * * *'
       timezone: Africa/Lagos
   push:
   workflow_dispatch:
